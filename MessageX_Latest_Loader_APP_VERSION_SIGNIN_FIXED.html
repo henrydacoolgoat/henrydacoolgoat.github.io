@@ -78,7 +78,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MessageX" />
   <meta name="application-name" content="MessageX" />
-  <meta name="messagex-build" content="messagex-v0994-compact-call-preview-permanent-gateway-asteroid-bundled-2026-08-09" />
+  <meta name="messagex-build" content="messagex-v0994-permanent-gateway-media-recovery-2026-08-12" />
   <meta name="messagex-distribution" content="asteroid-os-bundled" />
   <script id="messagex-asteroid-bundled-flag">
     window.__ASTEROID_OS_BUNDLED_MESSAGEX__ = true;
@@ -22562,6 +22562,9 @@ body.has-custom-wallpaper:is(
     let messageXMediaStorageOrigin = '';
     let messageXMediaStorageCheckedAt = 0;
     const messageXMediaTicketCache = new Map();
+    const messageXMediaTicketPromises = new Map();
+    const messageXMediaRecoveryQueue = new Map();
+    let messageXMediaHydrationSequence = 0;
     function invalidateMessageXMediaStorage(expectedOrigin = '') {
       if (expectedOrigin && messageXMediaStorageOrigin !== expectedOrigin) return;
       messageXMediaStorageOrigin = '';
@@ -22665,22 +22668,14 @@ body.has-custom-wallpaper:is(
       if (!cached || cached.expiresAt <= Date.now() + 300000) return '';
       return cached.url;
     }
-    async function authorizeMessageXMediaUrl(value, chatId) {
-      const pathname = messageXLaptopMediaPath(value);
-      if (!pathname || !chatId) throw new Error('The protected media reference is invalid.');
-      const cacheKey = `${chatId}|${pathname}`;
-      // A cached ticket is an optimization only. If the registry lookup has a brief
-      // network failure, let the ticket request below perform the bounded retries.
-      let storageOrigin = '';
-      try { storageOrigin = await refreshMessageXMediaStorage(); } catch (_) {}
-      const cached = messageXMediaTicketCache.get(cacheKey);
-      if (storageOrigin && cached && cached.origin === storageOrigin && cached.expiresAt > Date.now() + 300000) {
-        return cached.url;
-      }
-
-      await supabase.auth.getSession();
+    async function requestMessageXMediaTicket(pathname, chatId, forceSessionRefresh = false) {
+      const sessionResult = forceSessionRefresh
+        ? await supabase.auth.refreshSession()
+        : await supabase.auth.getSession();
       const authHeaders = mxSupabaseHeaders({ Accept: 'application/json' });
-      if (!authHeaders.Authorization) throw new Error('Sign in to view this media.');
+      if (!authHeaders.Authorization || (!sessionResult?.data?.session && sessionResult?.error)) {
+        throw new Error('Sign in to view this media.');
+      }
       const ticketRequest = await fetchMessageXMediaStorage(
         '/api/media-ticket',
         {
@@ -22695,50 +22690,151 @@ body.has-custom-wallpaper:is(
         }
       );
       const response = ticketRequest.response;
-      const responseOrigin = ticketRequest.storageOrigin;
       const responseText = await response.text().catch(() => '');
       let payload = null;
       try { payload = JSON.parse(responseText); } catch (_) {}
+      if (response.status === 401 && !forceSessionRefresh) {
+        return requestMessageXMediaTicket(pathname, chatId, true);
+      }
       if (!response.ok || !payload?.url || !payload?.expires_at) {
         throw new Error(payload?.error || `Media access failed (${response.status}).`);
       }
-      const authorizedUrl = new URL(payload.url, responseOrigin).href;
-      const expiresAt = Date.parse(payload.expires_at);
-      if (!Number.isFinite(expiresAt)) throw new Error('The media ticket expiration is invalid.');
-      messageXMediaTicketCache.set(cacheKey, {
-        url: authorizedUrl,
-        origin: responseOrigin,
-        expiresAt
-      });
-      return authorizedUrl;
+      return { payload, storageOrigin: ticketRequest.storageOrigin };
     }
-    async function hydrateProtectedMessageXMedia(container, value, chatId) {
+    async function authorizeMessageXMediaUrl(value, chatId) {
+      const pathname = messageXLaptopMediaPath(value);
+      if (!pathname || !chatId) throw new Error('The protected media reference is invalid.');
+      const cacheKey = `${chatId}|${pathname}`;
+      // A cached ticket is an optimization only. If the registry lookup has a brief
+      // network failure, let the ticket request below perform the bounded retries.
+      let storageOrigin = '';
+      try { storageOrigin = await refreshMessageXMediaStorage(); } catch (_) {}
+      const cached = messageXMediaTicketCache.get(cacheKey);
+      if (storageOrigin && cached && cached.origin === storageOrigin && cached.expiresAt > Date.now() + 300000) {
+        return cached.url;
+      }
+      const existingPromise = messageXMediaTicketPromises.get(cacheKey);
+      if (existingPromise) return existingPromise;
+      const ticketPromise = (async () => {
+        const { payload, storageOrigin: responseOrigin } = await requestMessageXMediaTicket(pathname, chatId);
+        const authorizedUrl = new URL(payload.url, responseOrigin).href;
+        const expiresAt = Date.parse(payload.expires_at);
+        if (!Number.isFinite(expiresAt)) throw new Error('The media ticket expiration is invalid.');
+        messageXMediaTicketCache.set(cacheKey, {
+          url: authorizedUrl,
+          origin: responseOrigin,
+          expiresAt
+        });
+        return authorizedUrl;
+      })();
+      messageXMediaTicketPromises.set(cacheKey, ticketPromise);
       try {
-        const authorizedUrl = await authorizeMessageXMediaUrl(value, chatId);
-        const image = container.querySelector('.msg-image[data-messagex-protected="1"]');
-        if (image) {
-          image.src = authorizedUrl;
-          image.dataset.full = authorizedUrl;
-          image.removeAttribute('data-messagex-protected');
-        }
-        const playable = container.querySelector('.msg-video[data-messagex-protected="1"], .msg-audio[data-messagex-protected="1"]');
-        if (playable) {
-          const source = playable.querySelector('source');
-          if (source) source.src = authorizedUrl;
-          playable.removeAttribute('data-messagex-protected');
-          playable.load();
-        }
-      } catch (error) {
-        console.warn('[MessageX protected media]', error);
-        const media = container.querySelector('.msg-image, .msg-video, .msg-audio');
-        if (media) {
-          const unavailable = document.createElement('div');
-          unavailable.className = 'msg-bubble selectable';
-          unavailable.textContent = error?.message || 'This media is unavailable to your account.';
-          media.replaceWith(unavailable);
+        return await ticketPromise;
+      } finally {
+        if (messageXMediaTicketPromises.get(cacheKey) === ticketPromise) {
+          messageXMediaTicketPromises.delete(cacheKey);
         }
       }
     }
+    function setMessageXMediaStatus(container, message, retryAction = null) {
+      let status = container.querySelector('.messagex-media-status');
+      if (!message) {
+        if (status) status.remove();
+        return;
+      }
+      if (!status) {
+        status = document.createElement('div');
+        status.className = 'msg-bubble selectable messagex-media-status';
+        const media = container.querySelector('.msg-image, .msg-video, .msg-audio');
+        if (media) media.insertAdjacentElement('afterend', status);
+        else container.appendChild(status);
+      }
+      status.replaceChildren(document.createTextNode(message));
+      if (retryAction) {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'Retry media';
+        retry.style.marginLeft = '10px';
+        retry.onclick = retryAction;
+        status.appendChild(retry);
+      }
+    }
+    function waitForMessageXMediaLoad(media, authorizedUrl, hydrationId) {
+      return new Promise((resolve, reject) => {
+        const successEvent = media.matches('.msg-image') ? 'load' : 'loadedmetadata';
+        const cleanup = () => {
+          media.removeEventListener(successEvent, onSuccess);
+          media.removeEventListener('error', onError);
+        };
+        const onSuccess = () => {
+          cleanup();
+          if (media.closest('.message')?.dataset.messagexMediaHydration !== hydrationId) return resolve(false);
+          resolve(true);
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error('The media download was interrupted.'));
+        };
+        media.addEventListener(successEvent, onSuccess, { once: true });
+        media.addEventListener('error', onError, { once: true });
+        if (media.matches('.msg-image')) {
+          media.src = authorizedUrl;
+          media.dataset.full = authorizedUrl;
+        } else {
+          const source = media.querySelector('source');
+          if (source) source.src = authorizedUrl;
+          media.load();
+        }
+      });
+    }
+    async function hydrateProtectedMessageXMedia(container, value, chatId, recoveryAttempt = 0) {
+      const media = container.querySelector('.msg-image, .msg-video, .msg-audio');
+      // renderMessages starts hydration immediately before it appends the message
+      // element to the document. The async ticket request gives the element time
+      // to connect, so only require that the media element itself exists here.
+      if (!media) return;
+      const hydrationId = String(++messageXMediaHydrationSequence);
+      container.dataset.messagexMediaHydration = hydrationId;
+      media.style.display = 'none';
+      setMessageXMediaStatus(container, recoveryAttempt ? 'Reconnecting to chat media…' : 'Loading chat media…');
+      try {
+        const authorizedUrl = await authorizeMessageXMediaUrl(value, chatId);
+        if (container.dataset.messagexMediaHydration !== hydrationId) return;
+        media.style.display = '';
+        const loaded = await waitForMessageXMediaLoad(media, authorizedUrl, hydrationId);
+        if (!loaded || container.dataset.messagexMediaHydration !== hydrationId) return;
+        media.removeAttribute('data-messagex-protected');
+        setMessageXMediaStatus(container, '');
+        messageXMediaRecoveryQueue.delete(container);
+      } catch (error) {
+        console.warn('[MessageX protected media]', error);
+        if (container.dataset.messagexMediaHydration !== hydrationId || !container.isConnected) return;
+        media.style.display = 'none';
+        media.setAttribute('data-messagex-protected', '1');
+        const pathname = messageXLaptopMediaPath(value);
+        if (pathname) messageXMediaTicketCache.delete(`${chatId}|${pathname}`);
+        messageXMediaRecoveryQueue.set(container, { value, chatId });
+        if (recoveryAttempt < 2 && navigator.onLine !== false) {
+          setMessageXMediaStatus(container, 'Reconnecting to chat media…');
+          setTimeout(() => {
+            if (container.isConnected && messageXMediaRecoveryQueue.has(container)) {
+              hydrateProtectedMessageXMedia(container, value, chatId, recoveryAttempt + 1);
+            }
+          }, recoveryAttempt === 0 ? 2000 : 6000);
+        } else {
+          const message = /sign in/i.test(String(error?.message || ''))
+            ? 'Sign in again to view this media.'
+            : 'Chat media is temporarily unavailable.';
+          setMessageXMediaStatus(container, message, () => hydrateProtectedMessageXMedia(container, value, chatId, 0));
+        }
+      }
+    }
+    window.addEventListener('online', () => {
+      for (const [container, pending] of messageXMediaRecoveryQueue) {
+        if (container.isConnected) hydrateProtectedMessageXMedia(container, pending.value, pending.chatId, 0);
+        else messageXMediaRecoveryQueue.delete(container);
+      }
+    });
     async function mxCurrentAuthUserId() {
       try {
         const result = await supabase.auth.getSession();
@@ -39873,13 +39969,31 @@ Select OK to consent.`);
 <script id="messagex-v0994-fast-bootstrap-runtime">
 (() => {
   'use strict';
-  window.MESSAGE_X_BUILD = 'messagex-v0994-post-ticket-resilient-permanent-gateway-2026-08-06';
+  window.MESSAGE_X_BUILD = 'messagex-v0994-durable-offline-media-delivery-2026-08-12';
   window.MESSAGE_X_BACKEND_CONTRACT = 'v0994-fast-bootstrap-chat-call-guards';
+  let durableMessageResumeTimer = null;
+  function refreshDurableMessagesAfterResume() {
+    clearTimeout(durableMessageResumeTimer);
+    durableMessageResumeTimer = setTimeout(async () => {
+      try {
+        if (typeof currentUser === 'undefined' || !currentUser) return;
+        if (typeof activeChatId === 'undefined' || !activeChatId) return;
+        if (typeof loadMessages !== 'function') return;
+        await loadMessages();
+      } catch (error) {
+        console.warn('MessageX could not refresh missed messages after reconnecting:', error);
+      }
+    }, 250);
+  }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && typeof activeChat !== 'undefined' && activeChat && typeof setChatComposerReadonly === 'function') {
-      setChatComposerReadonly(activeChat);
+    if (!document.hidden) {
+      if (typeof activeChat !== 'undefined' && activeChat && typeof setChatComposerReadonly === 'function') {
+        setChatComposerReadonly(activeChat);
+      }
+      refreshDurableMessagesAfterResume();
     }
   });
+  window.addEventListener('online', refreshDurableMessagesAfterResume);
 })();
 </script>
 </body>

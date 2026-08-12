@@ -84,6 +84,7 @@ const app = missingFiles.includes('app.mjs') ? '' : await readFile(path.join(bro
 const backgroundResearch = missingFiles.includes('background-research.html')
   ? ''
   : await readFile(path.join(browserDirectory, 'background-research.html'), 'utf8');
+const osIndex = await readFile(path.join(projectDirectory, 'index.html'), 'utf8');
 const ixlUserscript = missingFiles.includes('userscripts/ixl-answer-helper.user.js')
   ? ''
   : await readFile(path.join(browserDirectory, 'userscripts', 'ixl-answer-helper.user.js'), 'utf8');
@@ -124,6 +125,16 @@ const ixlUserscriptIsIntegrated = /IXL_ANSWER_HELPER_URL\s*=\s*new URL\(["']\.\/
   && /GM_xmlhttpRequest/.test(app)
   && /IXL Answer Helper - Fixed DOM and Selection Support/.test(ixlUserscript)
   && /@match\s+https:\/\/\*\.ixl\.com\/\*/.test(ixlUserscript);
+const portableBrowserLaunchIsIntegrated = /ASTEROID_BROWSER_CANONICAL_ENTRY\s*=\s*['"]https:\/\/henrydacoolgoat\.github\.io\/asteroid-os\/asteroid-browser\/index\.html['"]/.test(osIndex)
+  && /function\s+asteroidBrowserLaunchUrl\s*\(/.test(osIndex)
+  && /asteroid-parent-origin/.test(osIndex)
+  && /asteroid-browser-access-check/.test(osIndex)
+  && /asteroid-browser-access-result/.test(osIndex);
+const crossOriginAccessHandoffIsIntegrated = /\bparentOrigin,\s*\n\s*appMode:/.test(app)
+  && /async function\s+requestAsteroidAccess\s*\(/.test(app)
+  && /asteroid-browser-access-check/.test(app)
+  && /asteroid-browser-access-result/.test(app)
+  && /ASTEROID_LAUNCH\.parentOrigin/.test(app);
 
 const checks = [
   ['all required Asteroid Browser files are present', missingFiles.length === 0],
@@ -141,6 +152,8 @@ const checks = [
   ['the new-tab search control is visibly Google-only', /id=["']ntEngineLabel["']>Google</.test(index) && !/data-engine=/i.test(index)],
   ['no alternate search-provider endpoint remains selectable', nonGoogleSearchProviders.length === 0],
   ['the bundled IXL userscript injects only on secure ixl.com pages', ixlUserscriptIsIntegrated],
+  ['Asteroid OS falls back to the complete canonical Browser bundle on incomplete Pages mirrors', portableBrowserLaunchIsIntegrated],
+  ['the Browser preserves the Asteroid access pass across a cross-origin bundle fallback', crossOriginAccessHandoffIsIntegrated],
 ];
 
 const failures = checks.filter(([, passed]) => !passed).map(([name]) => name);

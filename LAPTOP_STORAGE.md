@@ -56,6 +56,25 @@ The packaged MessageX client pins authenticated media requests to
 that origin and report the laptop online before the client sends a request. This
 prevents a changed registry hostname from receiving a user's bearer token.
 
+Recipient presence is not required. MessageX stores the message row durably in
+Supabase even when the other user is signed out or has the app closed. When that
+user opens MessageX again—or an open copy reconnects—the active chat reloads its
+durable message history from Supabase and requests a fresh, short-lived media
+ticket from the laptop service.
+
+The same account can be used on multiple devices. Each login reloads that
+account's chat list from Supabase, and opening a chat reloads its durable message
+rows, including the sender and original `created_at` timestamp. Media sent from
+one device therefore appears as a sent item with the original send time on the
+account's other devices, while every device retrieves the bytes from this one
+laptop-backed media service.
+
+The image, audio, or video bytes are written atomically under
+`storage\chat-media\` on this laptop before the Supabase message is created. The
+laptop service and Cloudflare Tunnel therefore need to be running while a new
+media file is uploaded and whenever another device needs to view it; the
+recipient's device does not need to be online at send time.
+
 ## Upload behavior
 
 - The MessageX client uploads one `file` field as `multipart/form-data` over HTTP; the server also keeps accepting the previous raw-media request shape for older clients.

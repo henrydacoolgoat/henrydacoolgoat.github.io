@@ -1,0 +1,141 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Asteroid Browser Live Research</title></head><body><script>
+(function(){
+  'use strict';
+  const REQUEST='asteroid-browser-research-request';
+  const RESULT='asteroid-browser-research-result';
+  const READY='asteroid-browser-research-ready';
+  const MAX_QUERY=600;
+  function send(data){try{parent.postMessage(data,'*')}catch{}}
+  function clean(value,limit=12000){return String(value||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,limit)}
+  function normalized(value){return clean(value,12000).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+  function words(value,limit=Infinity){
+    const list=clean(value,Infinity).split(/\s+/).filter(Boolean);
+    return Number.isFinite(limit)&&list.length>limit?list.slice(0,limit).join(' ')+'…':list.join(' ');
+  }
+  function sentences(value){
+    return clean(value,Infinity).match(/[^.!?]+(?:[.!?]+|$)/g)?.map(x=>x.trim()).filter(Boolean)||[];
+  }
+  function novelExtract(extract,previousAnswer){
+    const prior=normalized(previousAnswer);
+    if(!prior)return words(extract,Infinity);
+    const fresh=sentences(extract).filter(sentence=>{
+      const n=normalized(sentence);
+      if(n.length<25)return false;
+      return !prior.includes(n) && !prior.includes(n.slice(0,Math.min(90,n.length)));
+    });
+    return words(fresh.length?fresh.join(' '):extract,Infinity);
+  }
+  function searchPhrase(question){
+    let q=clean(question,MAX_QUERY).replace(/[?!.]+$/,'').trim();
+    let m=q.match(/^how (?:old|tall|big|long) (?:is|was|are|were) (.+)$/i);
+    if(m)return m[1]+' '+q.match(/^how\s+(old|tall|big|long)/i)[1];
+    m=q.match(/^how many (.+?) (?:does|do|did|has|have|had) (.+?)(?: have)?$/i);
+    if(m)return m[2]+' '+m[1];
+    m=q.match(/^(?:what|who|where|when)\s+(?:is|are|was|were|did|does|do|has|have|had)\s+(.+)$/i);
+    if(m)return m[1];
+    m=q.match(/^(?:tell me about|give me facts about|facts about|define|explain|look up|research)\s+(.+)$/i);
+    if(m)return m[1];
+    m=q.match(/^why\s+(?:is|are|was|were|does|do|did)\s+(.+)$/i);
+    if(m)return m[1];
+    return q;
+  }
+  function jsonp(url,timeout=11000){
+    return new Promise((resolve,reject)=>{
+      const callback='__asteroidResearch'+Date.now().toString(36)+Math.random().toString(36).slice(2);
+      const script=document.createElement('script');
+      let done=false;
+      const finish=(error,data)=>{
+        if(done)return;done=true;clearTimeout(timer);script.remove();
+        try{delete window[callback]}catch{window[callback]=undefined}
+        error?reject(error):resolve(data);
+      };
+      window[callback]=data=>finish(null,data);
+      const timer=setTimeout(()=>finish(new Error('The live web source timed out.')),timeout);
+      script.onerror=()=>finish(new Error('The live web source could not load.'));
+      script.referrerPolicy='no-referrer';
+      script.src=url+(url.includes('?')?'&':'?')+'callback='+encodeURIComponent(callback);
+      document.head.appendChild(script);
+    });
+  }
+  async function loadJson(url,timeout=11000){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeout);
+    try{
+      const response=await fetch(url,{method:'GET',mode:'cors',credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal});
+      if(!response.ok)throw new Error('Live web source returned '+response.status+'.');
+      return await response.json();
+    }catch(error){
+      return await jsonp(url.replace(/([?&])origin=\*(&|$)/,'$1').replace(/[?&]$/,''),timeout);
+    }finally{clearTimeout(timer)}
+  }
+  function pageSources(pages){
+    return pages.slice(0,4).map(page=>({
+      title:clean(page.title,160),
+      url:clean(page.fullurl||page.canonicalurl,700),
+      touched:clean(page.touched,100),
+      snippet:words(page.extract,90)
+    })).filter(source=>source.title&&source.url);
+  }
+  async function exactTopic(topicHint){
+    const params=new URLSearchParams({
+      action:'query',titles:topicHint,prop:'extracts|info',explaintext:'1',exsentences:'25',
+      inprop:'url',redirects:'1',format:'json',formatversion:'2',origin:'*'
+    });
+    const data=await loadJson('https://en.wikipedia.org/w/api.php?'+params.toString());
+    const pages=Array.isArray(data&&data.query&&data.query.pages)?data.query.pages:[];
+    return pages.filter(page=>!page.missing&&clean(page&&page.extract,40));
+  }
+  async function searchedTopic(question){
+    const phrase=searchPhrase(question);
+    const params=new URLSearchParams({
+      action:'query',generator:'search',gsrsearch:phrase,gsrlimit:'6',gsrnamespace:'0',
+      prop:'extracts|info',explaintext:'1',exsentences:'6',inprop:'url',redirects:'1',
+      format:'json',formatversion:'2',origin:'*'
+    });
+    const data=await loadJson('https://en.wikipedia.org/w/api.php?'+params.toString());
+    const pages=Array.isArray(data&&data.query&&data.query.pages)?data.query.pages:[];
+    return {phrase,pages:pages.filter(page=>clean(page&&page.extract,40)).sort((a,b)=>(Number(a.index)||999)-(Number(b.index)||999))};
+  }
+  async function wikipedia(payload){
+    const question=clean(payload.query,MAX_QUERY);
+    const topicHint=clean(payload.topicHint,160);
+    const previousAnswer=clean(payload.previousAnswer,12000);
+    let phrase=searchPhrase(question);
+    let pages=[];
+    if(topicHint){
+      pages=await exactTopic(topicHint);
+      phrase=topicHint;
+    }
+    if(!pages.length){
+      const searched=await searchedTopic(question);
+      phrase=searched.phrase;
+      pages=searched.pages;
+    }
+    if(!pages.length)throw new Error('No reliable live web result was found.');
+    const top=pages[0];
+    const answer=novelExtract(top.extract,previousAnswer);
+    if(!answer)throw new Error('The live web result did not contain readable text.');
+    return {
+      ok:true,provider:'Wikipedia Live',query:question,searchPhrase:phrase,
+      answer,topicTitle:clean(top.title,160),topicUrl:clean(top.fullurl||top.canonicalurl,700),
+      sources:pageSources(pages)
+    };
+  }
+  window.addEventListener('message',async event=>{
+    if(event.source!==parent)return;
+    const data=event.data||{};
+    if(data.type!=='asteroid-browser-research-ping'&&data.type!==REQUEST)return;
+    if(data.type==='asteroid-browser-research-ping'){send({type:READY});return}
+    const requestId=clean(data.requestId,140);
+    const payload={
+      query:clean(data.query,MAX_QUERY),
+      topicHint:clean(data.topicHint,160),
+      previousAnswer:clean(data.previousAnswer,12000)
+    };
+    if(!requestId||!payload.query)return;
+    try{send({type:RESULT,requestId,result:await wikipedia(payload)})}
+    catch(error){send({type:RESULT,requestId,result:{ok:false,query:payload.query,error:clean(error&&error.message||error||'Live web research failed.',400)}})}
+  });
+  send({type:READY});
+})();
+</script></body></html>
