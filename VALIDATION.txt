@@ -1,0 +1,105 @@
+Asteroid OS v0.99.23.4 — MessageX laptop media storage validation
+
+Static validation
+- 33 inline executable JavaScript blocks passed Node syntax validation.
+- 17 dedicated Asteroid Supabase Auth hardening assertions passed.
+- The Asteroid security marker is asteroid-os-supabase-verified-session-2026-08-05.
+- Saved sessions must pass a live Supabase /auth/v1/user check before the desktop opens.
+- The verified Supabase user ID must match profiles.auth_user_id; username metadata is not accepted as authorization evidence.
+- Full sessions are no longer written to localStorage, window.name, or browser history mirrors.
+- Log Out and Switch User call the Supabase local-session logout endpoint.
+- The standalone MessageX file and remembered loader are byte-identical.
+- The MessageX document embedded in index.html matches the escaped standalone file.
+- All three bundled build markers use messagex-v0994-post-ticket-resilient-permanent-gateway-asteroid-bundled-2026-08-06.
+- The complete OS carries asteroid-os-v0.99.23.4-post-ticket-permanent-messagex-gateway-2026-08-06 in its document metadata and host runtime.
+- All 29 dedicated MessageX gateway assertions passed; the standalone, loader, and embedded copies pin authenticated media requests to https://messagex-media.asteroid-messagex.workers.dev.
+- Desktop MessageX, Contacts, notification clicks, and Comet all mount or command the same validated embedded client; no launch path fetches a separate MessageX file.
+- The Supabase registry lookup and media gateway request share one three-attempt retry boundary, raw browser network failures are normalized, and recipient media-ticket requests fall through to the same resilient path.
+- Executable fault injection proved recovery after two registry `Failed to fetch` errors and after one HTTP 503; exhausting all three attempts produces the actionable photo retry message instead of the raw browser error.
+- Photo messages are inserted into Supabase only after the laptop confirms the upload and MessageX validates the protected media path.
+- No direct MessageX upload reference to the Supabase chat-media bucket remains.
+- The standalone, loader, and embedded copies each contain the laptop upload header.
+- Protected laptop media rendering requests a Supabase-authenticated JSON POST media ticket for the message chat; the server keeps the legacy GET route for older builds.
+- Protected-media forwarding authorizes both source and destination chats before inserting the forwarded row.
+
+Runtime validation
+- A temporary Supabase username/password account returned a complete signed session.
+- Supabase /auth/v1/user returned the same immutable user ID as the password login.
+- The authenticated profile row matched that user through profiles.auth_user_id.
+- A deliberately forged bearer token was denied with HTTP 403.
+- Local Supabase logout returned HTTP 204, and reuse of the revoked refresh token was denied with HTTP 400.
+- The temporary security-test profile and Auth user were deleted; both test-remnant counts are zero.
+- The normal-user Node server runs as a media-only service and reports app_hosted=false.
+- /message.html returns HTTP 404; the laptop does not host Asteroid OS or MessageX HTML.
+- The local and public /healthz endpoints returned the MessageX storage service response.
+- A cross-origin upload preflight returned HTTP 204 with the required CORS headers.
+- A request without a MessageX session was rejected with HTTP 401.
+- A request with an invalid bearer token was rejected with HTTP 401.
+- The permanent gateway accepted the local-file-origin POST ticket preflight with HTTP 204 and the required Authorization, Content-Type, and X-MessageX-Upload headers.
+- An unauthenticated POST media-ticket request reached the laptop and was rejected with HTTP 401; an invalid Supabase bearer was also rejected with HTTP 401.
+- A POST ticket request missing the MessageX marker was rejected with HTTP 403 instead of becoming a gateway error.
+- An unauthenticated protected-media share was rejected with HTTP 401.
+- A raw unsigned /media path was rejected with HTTP 403.
+- Rejected upload tests wrote zero files.
+- The Supabase media_storage_config heartbeat matched the active tunnel.
+- Current-user automatic startup was verified in both the Windows Startup folder and HKCU Run; neither registration requires elevation.
+- A forced recovery test stopped the server, tunnel, and heartbeat while leaving the supervisor running.
+- The supervisor created replacement server, tunnel, and heartbeat processes in 33 seconds without changing its own process.
+- A second full-startup simulation stopped the supervisor too and invoked the exact hidden Startup-folder launcher used after Windows sign-in.
+- The full-startup launcher created a new supervisor and complete service group in about 25 seconds.
+- The old account-less Quick Tunnel design was replaced on 2026-08-06 by the persistent Cloudflare named tunnel `messagex-storage`.
+- The active named-tunnel UUID is b73c147b-4929-4b43-affa-4cf35eedd171 and Cloudflare reported it healthy after recovery.
+- The MessageX client now clears a failed gateway cache and retries the Supabase registry lookup plus media request up to three times against the pinned permanent origin.
+- Cloudflare provisioned the permanent domain https://messagex-media.asteroid-messagex.workers.dev with preview URLs disabled.
+- The permanent Worker gateway returned the laptop /healthz response and a GitHub Pages-style CORS preflight returned HTTP 204.
+- MessageX reads media_storage_config for online state and timestamps, requires the registry to advertise the permanent Worker, and sends authenticated media requests only to the pinned Worker origin.
+- The Worker streams media bodies through a private `LAPTOP_VPC` binding to the named tunnel; it does not expose or look up a rotating internal hostname.
+- The latest complete no-admin Startup simulation at 2026-08-06T20:35:04Z stopped the supervisor, server, connector, and heartbeat, then restored the full service group with new process IDs.
+- That recovery preserved the same permanent workers.dev URL, named-tunnel UUID, and all four existing media/metadata files byte-for-byte. Cloudflare continued using HTTP/2 edge transport.
+- GitHub Pages-style and local-file origins both received HTTP 200 health responses and HTTP 204 upload preflights with the required CORS headers. Thirty consecutive public health checks passed (30/30).
+- Unauthenticated upload and POST media-ticket probes both returned HTTP 401 and did not change the media inventory.
+- This protected-ticket repair created or deleted no Supabase accounts and made no database-schema changes.
+- Supabase contained 45 Auth users and 45 profiles at the named-tunnel migration checkpoint, with zero Auth users missing profiles and zero profiles missing Auth users; no test account was created for the migration or restart validation.
+- The local media directory inventory was unchanged by forced recovery.
+- A full temporary-account integration test created four real Supabase Auth username/password sessions.
+- The authenticated sender uploaded a PNG to a two-member direct chat; the recipient could read and download it, while a nonmember received HTTP 403.
+- The same protected media was authorized for a three-member group; a group member could read and download it, while the group outsider received HTTP 403.
+- The signed file was downloaded through the public Cloudflare hostname with HTTP 200 and exactly matched the uploaded 68-byte PNG SHA-256.
+- All four temporary Auth users, two chats, two messages, the uploaded PNG, its authorization sidecar, and the public-download copy were removed after the test; zero test records or media files remain.
+
+Preserved behavior
+- Existing Supabase media URLs remain supported.
+- Supabase username/password authentication remains the identity source; no password is sent to the laptop.
+- Direct MessageX username resolution remains unchanged.
+- The v0.99.23.4 AI performance behavior remains unchanged.
+- preview.zip is the updated deliverable; earlier builds remain preserved, including preview.before-messagex-tunnel.66989920.zip, preview.before-stable-domain.20260805-225022.zip, preview.before-named-tunnel.20260806-110502.zip, preview.before-asteroid-permanent-gateway.20260806-160126.zip, preview.before-full-asteroid-fetch-fix.20260806-161828.zip, and preview.before-protected-media-post-ticket.20260806-163719.zip.
+- No physical Windows reboot was performed during validation; the full-startup simulation exercised the exact post-sign-in launcher, supervisor, tunnel, and Supabase re-registration path without interrupting this task.
+
+2026-08-09 combined GitHub Pages release validation
+- The complete OS carries asteroid-os-v0.99.23.4-all-freeperiod-covers-high-performance-games-2026-08-09 in document metadata and host runtime.
+- The full FreePeriod manifest remains exactly 300 unique HTML games; the rejected six-game fallback is not bundled.
+- FreePeriod now contains one same-origin JPEG cover for every one of its 300 catalog games, so no card depends on the unavailable Canvas archive or a partial third-party CDN mapping.
+- The 300 generated filenames are unique, all 300 files pass JPEG signature and nontrivial-size validation, and every manifest title maps to an existing bundled cover.
+- Launched games now use an eager, high-priority frame with fullscreen, audio, and gamepad permissions. WebGL and WebGL2 games request the browser's high-performance GPU path and desynchronized rendering while older 2D canvas games retain their original context options.
+- Browser QA opened 2048 from FreePeriod and returned to the complete covered 300-game catalog.
+- FreePeriod exits its nested game fullscreen document before restoring the catalog, and Asteroid OS independently clears stale fullscreen/input layout state when an app closes or fullscreen ends so the dock is restored.
+- The MessageX self preview is now capped at 170 px on desktop and 126 px on mobile while keeping its 9:16 ratio, mirror transform, border, label, and control offsets.
+- Side-by-side visual QA against Screenshot 2026-08-09 173737.png confirmed that the self preview is materially smaller without covering the header or call controls; design-qa.md records final result: passed.
+- FreePeriod passed its expanded dedicated bundle and cover assertions; Asteroid Browser, MessageX desktop/call layout, MessageX media gateway, Supabase Auth hardening, and all inline scripts also passed their release validators.
+- The permanent media endpoint /healthz returned ok=true; /gateway-meta reported backend_online=true, tunnel_mode=named-tunnel, and backend_transport=workers-vpc.
+- This release made no Supabase account, profile, chat, membership, message, storage registry, or laptop media-data changes.
+
+2026-08-09 silent AFS and faster FreePeriod follow-up
+- AFS startup and lock recognition now run without displaying the AFS overlay or exposing an active dialog to assistive input; the ordinary password panel stays visible and focused throughout.
+- The optimized AFS input is 320 pixels wide, the camera requests 480 × 360 at up to 30 FPS, individual recognition passes target 500 ms or less, and the complete silent recognition window is capped at five seconds.
+- If background recognition is unavailable, times out, or does not match, the already-visible password flow remains usable; a successful match still unlocks immediately.
+- FreePeriod starts downloading on pointer, touch, or keyboard intent before the click completes, races the raw GitHub source against a delayed CDN fallback, aborts the slower copy, and deduplicates concurrent requests.
+- Every successfully downloaded game is written to a revisioned OPFS cache without delaying launch, so reopening that game in a later Asteroid OS session reads the local copy before touching the network.
+- The full 300-game catalog, 300 visible cover presentations, high-performance WebGL bridge, Asteroid Browser files, MessageX permanent gateway, and Supabase Auth rules remain unchanged.
+
+2026-08-09 source-art cover correction
+- Removed all 300 game-loading screenshots from the FreePeriod cover directory.
+- The games remain the exact 300-item CoolDude2349/Offline-HTML-Games-Pack catalog. The old Canvas Free-for-Teacher artwork archive is no longer downloadable because that service was discontinued, so the build never waits on or fetches that dead Canvas URL.
+- 170 games now use locally bundled published thumbnail, logo, splash, or icon assets sourced from public GitHub game projects. Their exact source URLs and local filenames are recorded in freeperiod-cover-manifest.json.
+- The other 130 games use deterministic FreePeriod title artwork rendered directly by the catalog. These are visible covers, not blank cards and not screenshots of a running game.
+- Every one of the 300 catalog entries has exactly one cover mode, all 170 source-art files are bundled and signature-checked, and no cover depends on Canvas or another runtime image request.

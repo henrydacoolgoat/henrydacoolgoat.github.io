@@ -1,0 +1,99 @@
+{
+  "lowEndPhone": {
+    "performanceMode": "lite",
+    "revampedMode": "on",
+    "effectiveModel": "edge",
+    "largeStartupModelDecodes": 0,
+    "pageErrors": 0
+  },
+  "strongDesktop": {
+    "performanceMode": "full",
+    "revampedMode": "on",
+    "effectiveModel": "qwen",
+    "largeStartupModelDecodes": 0,
+    "pageErrors": 0
+  },
+  "directMessageXUsernames": {
+    "plainUsername": "passed",
+    "atUsername": "passed",
+    "optionalContactAlias": "passed",
+    "contactsRequired": false
+  },
+  "asteroidSupabaseSecurity": {
+    "build": "asteroid-os-supabase-verified-session-2026-08-05",
+    "inlineJavaScriptBlocksValidated": 33,
+    "hardeningAssertionsPassed": 13,
+    "savedSessionRequiresAuthUserEndpoint": true,
+    "profileMustMatchAuthUserId": true,
+    "userMetadataUsedForAuthorization": false,
+    "legacyLocalStorageTokenMirrorRemoved": true,
+    "legacyWindowNameTokenMirrorRemoved": true,
+    "legacyHistoryTokenMirrorRemoved": true,
+    "supabaseLocalLogoutEnabled": true,
+    "livePasswordLogin": "passed",
+    "verifiedUserIdMatched": true,
+    "verifiedProfileMatched": true,
+    "forgedTokenRejectedHttp": 403,
+    "localLogoutHttp": 204,
+    "revokedRefreshTokenRejectedHttp": 400,
+    "temporarySecurityTestCleanup": {
+      "authUsersRemaining": 0,
+      "profilesRemaining": 0
+    }
+  },
+  "messageXLaptopMediaStorage": {
+    "laptopHostsAsteroidOS": false,
+    "mediaOnlyRootJson": "passed",
+    "messageHtmlHttp": 404,
+    "inlineJavaScriptBlocksValidated": 33,
+    "standaloneLoaderAndEmbedSynchronized": true,
+    "supabaseDirectUploadReferences": 0,
+    "supabaseUsernamePasswordAuthLinked": true,
+    "laptopReceivesPasswords": false,
+    "accessRule": "current Supabase username must be in chats.members",
+    "directAndGroupChatMediaProtection": true,
+    "mediaTicketTtlSeconds": 3600,
+    "unsignedUploadRejected": 401,
+    "invalidSessionRejected": 401,
+    "unauthenticatedMediaTicketRejected": 401,
+    "unauthenticatedMediaShareRejected": 401,
+    "unsignedMediaDownloadRejected": 403,
+    "crossOriginPreflightAccepted": 204,
+    "rejectedUploadFilesWritten": 0,
+    "authenticatedLiveUserUpload": "passed with isolated temporary Supabase Auth accounts",
+    "directChatRecipientDownload": "passed",
+    "directChatNonmemberRejected": 403,
+    "groupChatMemberDownload": "passed",
+    "groupChatOutsiderRejected": 403,
+    "publicCloudflareSignedDownloadHttp": 200,
+    "publicCloudflareDownloadedBytes": 68,
+    "publicCloudflareSHA256ExactMatch": true,
+    "temporaryTestCleanup": {
+      "authUsersRemaining": 0,
+      "profilesRemaining": 0,
+      "chatsRemaining": 0,
+      "messagesRemaining": 0,
+      "mediaFilesRemaining": 0
+    },
+    "restartRecovery": {
+      "actualWindowsRebootPerformed": false,
+      "forcedChildProcessRecoveryPassed": true,
+      "recoveredInSeconds": 33,
+      "fullStartupLauncherRecoveryPassed": true,
+      "fullStartupLauncherRecoverySeconds": 25,
+      "startupFolderRegistered": true,
+      "hkcuRunRegistered": true,
+      "administratorRequired": false,
+      "supervisorPidChangedInFullStartupTest": true,
+      "serverPidChanged": true,
+      "tunnelPidChanged": true,
+      "heartbeatPidChanged": true,
+      "quickTunnelUrlChanged": true,
+      "supabaseEndpointMatchedReplacement": true,
+      "supabaseEndpointOnlineAfterHealth": true,
+      "publicHealthViaCloudflareDns": true,
+      "mediaInventoryPreserved": true,
+      "messageXRefreshAndRetryEnabled": true
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "tested_at": "2026-08-06T20:35:04.5880028Z",
+  "method": "Stopped the server, named-tunnel connector, Supabase heartbeat, and supervisor, then invoked the exact no-admin Windows Startup-folder launcher used after sign-in",
+  "actual_windows_reboot_performed": false,
+  "startup_registration": {
+    "startup_folder": true,
+    "hkcu_run": true,
+    "requires_administrator": false,
+    "starts_after_windows_sign_in": true
+  },
+  "recovery": {
+    "full_startup_launcher_recovery_passed": true,
+    "full_startup_launcher_recovery_seconds": 15,
+    "old_supervisor_pid": 14132,
+    "new_supervisor_pid": 38732,
+    "supervisor_pid_changed": true,
+    "old_public_url": "https://messagex-media.asteroid-messagex.workers.dev",
+    "new_public_url": "https://messagex-media.asteroid-messagex.workers.dev",
+    "public_url_stable": true,
+    "tunnel_name": "messagex-storage",
+    "tunnel_id": "b73c147b-4929-4b43-affa-4cf35eedd171",
+    "named_tunnel_preserved": true,
+    "worker_transport": "workers-vpc",
+    "cloudflare_edge_protocol": "http2",
+    "registered_tunnel_connections": 4,
+    "server_pid_changed": true,
+    "tunnel_pid_changed": true,
+    "heartbeat_pid_changed": true,
+    "local_health_ok": true,
+    "cloudflare_public_health_ok": true
+  },
+  "supabase_registry": {
+    "endpoint_matches_runtime": true,
+    "is_online": true,
+    "tunnel_mode": "named-tunnel",
+    "public_gateway_url": "https://messagex-media.asteroid-messagex.workers.dev"
+  },
+  "persistence": {
+    "media_directory_untouched": true,
+    "media_files_before": 4,
+    "media_files_after": 4,
+    "media_inventory_sha256_preserved": true,
+    "messages_chats_accounts_location": "Supabase",
+    "asteroid_sync_location": "Supabase asteroid_os_sync plus device cache",
+    "media_location": "Laptop storage/chat-media"
+  },
+  "client_validation": {
+    "standalone_loader_and_embedded_messagex_synchronized": true,
+    "supabase_registry_lookup_retried_with_upload": true,
+    "media_request_attempts": 3,
+    "raw_failed_to_fetch_normalized": true,
+    "recipient_ticket_uses_authenticated_post_request": true,
+    "legacy_get_ticket_route_preserved": true,
+    "photo_message_insert_waits_for_validated_laptop_path": true,
+    "inline_javascript_blocks_validated": 33,
+    "supabase_auth_security_assertions_passed": 17,
+    "messagex_gateway_assertions_passed": 29,
+    "public_health_checks_passed": "2/2 after the latest restart; 30/30 during the prior soak",
+    "github_pages_cors_preflight_passed": true,
+    "post_ticket_preflight_passed": true,
+    "unauthorized_post_ticket_rejected": true,
+    "invalid_bearer_post_ticket_rejected": true,
+    "missing_ticket_marker_rejected": true
+  }
+}
